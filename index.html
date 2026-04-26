@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lumina — Avance v0.3</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800;900&family=Crimson+Text:ital@0;1&family=Nunito:wght@400;600;700;800&family=Pompiere&display=swap" rel="stylesheet">
+<style>
+/* ===========================
+   LUMINA — PROTOTIPO v0.3
+   Proyecto: Biblioteca Visual
+   Alumno: [Tu nombre]
+   Fecha: Abril 2025
+   =========================== */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: 'Montserrat', sans-serif;
+  background: #12051f;
+  color: #fff;
+}
+
+/* ── VARIABLES ── */
+:root {
+  --purple: #9b3de8;
+  --purple-light: #c87de8;
+  --pink: #f8cee0;
+  --dark: #1a0a30;
+  --card-bg: rgba(38, 20, 62, 0.7);
+  --border: rgba(200, 125, 232, 0.2);
+}
+
+/* ── LOADING ── */
+#loadingScreen {
+  position: fixed; inset: 0; z-index: 9999;
+  background: linear-gradient(160deg, #fad2c9 0%, #c87de8 45%, #1a0a30 100%);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px;
+  transition: opacity .6s ease;
+}
+#loadingScreen.fade { opacity: 0; pointer-events: none; }
+.load-logo {
+  font-size: 64px; font-weight: 900; letter-spacing: .14em; color: #fff;
+  text-shadow: 0 0 60px rgba(155,61,232,.6);
+}
+.load-sub { font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: rgba(255,255,255,.5); }
+.load-bar-wrap { width: 180px; height: 3px; background: rgba(255,255,255,.15); border-radius: 10px; overflow: hidden; }
+.load-bar { height: 100%; background: #fff; border-radius: 10px; animation: loadFill 1.8s ease forwards; }
+@keyframes loadFill { from { width: 0 } to { width: 100% } }
+
+/* ── AUTH ── */
+#authScreen {
+  position: fixed; inset: 0; z-index: 900;
+  background: rgba(10, 2, 25, .96);
+  display: none; align-items: center; justify-content: center;
+}
+#authScreen.show { display: flex; }
+.auth-wrap {
+  width: 360px;
+  background: rgba(30, 10, 55, .95);
+  border: 1px solid var(--border);
+  border-radius: 24px; padding: 2.5rem;
+  box-shadow: 0 40px 100px rgba(0,0,0,.6);
+  animation: popIn .35s cubic-bezier(.25,.8,.25,1) both;
+}
+@keyframes popIn { from { opacity: 0; transform: scale(.93) translateY(20px) } to { opacity: 1; transform: scale(1) translateY(0) } }
+.auth-logo { font-size: 36px; font-weight: 900; letter-spacing: .12em; text-align: center; margin-bottom: 4px; }
+.auth-tagline { font-size: 10px; color: rgba(255,255,255,.3); letter-spacing: .18em; text-transform: uppercase; text-align: center; margin-bottom: 2rem; }
+.auth-note {
+  font-size: 10px; background: rgba(155,61,232,.12); border: 1px dashed rgba(155,61,232,.35);
+  border-radius: 8px; padding: 8px 12px; color: rgba(200,150,255,.7); margin-bottom: 1.2rem;
+  text-align: center; letter-spacing: .04em;
+}
+.auth-field { margin-bottom: 12px; }
+.auth-field label { font-size: 9px; color: rgba(255,255,255,.35); letter-spacing: .12em; text-transform: uppercase; font-weight: 800; display: block; margin-bottom: 6px; }
+.auth-field input {
+  width: 100%; padding: 11px 14px;
+  background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
+  border-radius: 12px; color: #fff; font-family: 'Montserrat', sans-serif;
+  font-size: 13px; outline: none; transition: border-color .2s;
+}
+.auth-field input:focus { border-color: var(--purple); }
+.auth-btn {
+  width: 100%; margin-top: 8px; padding: 13px;
+  background: linear-gradient(135deg, #9b3de8, #5a1faa);
+  border: none; border-radius: 12px; color: #fff;
+  font-family: 'Montserrat', sans-serif; font-size: 13px; font-weight: 800;
+  letter-spacing: .08em; cursor: pointer; transition: all .2s;
+}
+.auth-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 30px rgba(155,61,232,.4); }
+.auth-wip {
+  margin-top: 14px; font-size: 10px; color: rgba(255,255,255,.2);
+  text-align: center; letter-spacing: .06em;
+}
+.auth-wip span { background: rgba(255,200,50,.15); color: rgba(255,220,80,.6); padding: 2px 7px; border-radius: 6px; font-weight: 700; }
+
+/* ── SHELL ── */
+#app {
+  display: none; flex-direction: column; height: 100vh; overflow: hidden;
+  background: linear-gradient(160deg, #1a0535 0%, #0e0220 100%);
+}
+#app.show { display: flex; }
+
+/* ── TOPNAV ── */
+.topnav { padding: 16px 24px 0; flex-shrink: 0; }
+.nav-bar {
+  background: rgba(60, 35, 85, .88);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 50px; padding: 10px 16px;
+  display: flex; align-items: center; gap: 8px;
+  box-shadow: 0 4px 24px rgba(0,0,0,.3);
+}
+.nav-logo { font-size: 18px; font-weight: 900; letter-spacing: .12em; color: #fff; margin-right: 8px; }
+.nav-tab {
+  padding: 9px 22px; border-radius: 30px; border: none;
+  background: none; color: rgba(255,255,255,.7);
+  font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 700;
+  cursor: pointer; transition: all .18s; white-space: nowrap;
+}
+.nav-tab:hover { color: #fff; }
+.nav-tab.active { border: 2px solid rgba(200,150,220,.6); color: #fff; padding: 7px 22px; }
+.nav-tab.disabled { opacity: .3; cursor: not-allowed; position: relative; }
+.nav-tab.disabled::after {
+  content: 'próx.'; font-size: 7px; position: absolute; top: 4px; right: 6px;
+  background: rgba(255,200,60,.2); color: rgba(255,220,80,.7); padding: 1px 4px; border-radius: 4px;
+}
+.nav-search {
+  display: flex; align-items: center;
+  background: #fff; border-radius: 50px;
+  width: 320px; padding: 4px 4px 4px 14px; gap: 6px;
+  box-shadow: 0 2px 12px rgba(0,0,0,.15);
+}
+.nav-search input {
+  background: none; border: none; outline: none;
+  font-family: 'Montserrat', sans-serif; font-size: 13px;
+  color: #333; flex: 1; padding: 7px 4px;
+}
+.nav-search input::placeholder { color: #bbb; }
+.nav-search-btn {
+  background: #23354a; color: #fff; border: none;
+  padding: 9px 20px; border-radius: 50px; font-family: 'Nunito', sans-serif;
+  font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap;
+  transition: background .2s;
+}
+.nav-search-btn:hover { background: #1a2a3a; }
+.nav-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.nav-avatar {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--purple), var(--purple-light));
+  border: 2px solid rgba(200,150,255,.35);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 900; cursor: pointer;
+  transition: all .2s;
+}
+.nav-avatar:hover { transform: scale(1.08); border-color: rgba(200,150,255,.7); }
+
+/* ── WIP BANNER ── */
+.wip-bar {
+  margin: 10px 24px 0;
+  padding: 8px 18px;
+  background: rgba(255,190,50,.08);
+  border: 1px dashed rgba(255,190,50,.3);
+  border-radius: 12px;
+  display: flex; align-items: center; gap: 10px;
+  font-size: 11px; color: rgba(255,210,80,.7);
+  font-weight: 700; letter-spacing: .04em;
+}
+.wip-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,200,60,.7); animation: pulse 1.5s infinite; flex-shrink: 0; }
+@keyframes pulse { 0%,100% { opacity: .5; transform: scale(.8) } 50% { opacity: 1; transform: scale(1.15) } }
+
+/* ── CONTENT ── */
+.content { flex: 1; overflow-y: auto; min-height: 0; padding: 0; }
+.content::-webkit-scrollbar { width: 6px; }
+.content::-webkit-scrollbar-track { background: transparent; }
+.content::-webkit-scrollbar-thumb { background: rgba(155,61,232,.3); border-radius: 6px; }
+
+/* ── VIEWS ── */
+.view { display: none; animation: fadeUp .35s ease both; }
+.view.active { display: block; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(16px) } to { opacity: 1; transform: translateY(0) } }
+
+/* ── HOME ── */
+.home-hero {
+  min-height: calc(100vh - 140px);
+  display: flex; align-items: center;
+  padding: 40px 60px;
+  position: relative; overflow: hidden;
+}
+.hero-bg-blob {
+  position: absolute; right: -80px; top: -40px;
+  width: 600px; height: 600px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(155,61,232,.22) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero-content { position: relative; z-index: 2; max-width: 580px; }
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: rgba(155,61,232,.18); border: 1px solid rgba(155,61,232,.3);
+  border-radius: 20px; padding: 5px 14px; margin-bottom: 24px;
+  font-size: 10px; font-weight: 800; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--purple-light);
+}
+.hero-badge::before { content: '●'; font-size: 7px; color: #a0f0a0; }
+.hero-title {
+  font-size: clamp(72px, 10vw, 130px);
+  font-weight: 900; letter-spacing: .08em; line-height: .95;
+  color: #fff; margin-bottom: 22px;
+  text-shadow: 0 4px 40px rgba(155,61,232,.3);
+}
+.hero-desc {
+  font-size: 15px; line-height: 1.7;
+  color: rgba(255,255,255,.55);
+  font-family: 'Pompiere', cursive;
+  font-size: 20px; margin-bottom: 40px;
+}
+.hero-actions { display: flex; gap: 14px; align-items: center; }
+.btn-primary {
+  padding: 15px 36px; border-radius: 50px;
+  background: linear-gradient(135deg, var(--purple), #5a1faa);
+  border: none; color: #fff;
+  font-family: 'Montserrat', sans-serif; font-size: 14px; font-weight: 800;
+  letter-spacing: .08em; cursor: pointer; transition: all .25s;
+  box-shadow: 0 12px 36px rgba(155,61,232,.35);
+}
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 18px 48px rgba(155,61,232,.5); }
+.btn-outline {
+  padding: 15px 36px; border-radius: 50px;
+  background: transparent;
+  border: 2px solid rgba(255,255,255,.2); color: rgba(255,255,255,.7);
+  font-family: 'Montserrat', sans-serif; font-size: 14px; font-weight: 700;
+  letter-spacing: .06em; cursor: pointer; transition: all .25s;
+}
+.btn-outline:hover { border-color: rgba(255,255,255,.5); color: #fff; }
+.hero-stats {
+  display: flex; gap: 36px; margin-top: 48px; padding-top: 32px;
+  border-top: 1px solid rgba(255,255,255,.07);
+}
+.stat-num { font-size: 28px; font-weight: 900; color: #fff; line-height: 1; }
+.stat-label { font-size: 10px; color: rgba(255,255,255,.35); letter-spacing: .1em; text-transform: uppercase; margin-top: 4px; font-weight: 700; }
+
+/* Feature cards */
+.home-features {
+  padding: 20px 60px 60px;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+}
+.feature-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 20px; padding: 24px;
+  transition: all .25s;
+  position: relative; overflow: hidden;
+}
+.feature-card::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(155,61,232,.06), transparent);
+  opacity: 0; transition: opacity .25s;
+}
+.feature-card:hover { border-color: rgba(200,125,232,.4); transform: translateY(-2px); }
+.feature-card:hover::before { opacity: 1; }
+.feature-card.wip { opacity: .55; }
+.fc-icon { font-size: 28px; margin-bottom: 12px; }
+.fc-title { font-size: 14px; font-weight: 800; color: #fff; margin-bottom: 6px; letter-spacing: .04em; }
+.fc-desc { font-size: 12px; color: rgba(255,255,255,.45); line-height: 1.6; }
+.fc-badge {
+  display: inline-block; margin-top: 12px; font-size: 9px; font-weight: 800;
+  padding: 3px 10px; border-radius: 8px; letter-spacing: .08em; text-transform: uppercase;
+}
+.fc-badge.done { background: rgba(100,230,130,.12); color: rgba(120,230,140,.8); border: 1px solid rgba(100,230,130,.2); }
+.fc-badge.wip { background: rgba(255,190,50,.1); color: rgba(255,210,80,.7); border: 1px dashed rgba(255,190,50,.3); }
+.fc-badge.pending { background: rgba(155,61,232,.1); color: rgba(200,150,255,.6); border: 1px dashed rgba(155,61,232,.3); }
+
+/* ── GALLERY ── */
+.gallery-header {
+  padding: 24px 28px 16px;
+  display: flex; align-items: flex-end; justify-content: space-between;
+}
+.gallery-title { font-size: 22px; font-weight: 900; letter-spacing: .06em; }
+.gallery-sub { font-size: 12px; color: rgba(255,255,255,.35); margin-top: 3px; font-weight: 600; }
+.gallery-note {
+  font-size: 11px; color: rgba(200,150,255,.55);
+  background: rgba(155,61,232,.08); border: 1px dashed rgba(155,61,232,.25);
+  padding: 6px 14px; border-radius: 10px; font-weight: 700;
+}
+.cat-pills { display: flex; gap: 7px; padding: 0 28px 16px; flex-wrap: wrap; }
+.cat-pill {
+  font-size: 11px; padding: 6px 16px; border-radius: 20px;
+  border: 1px solid rgba(255,255,255,.1); cursor: pointer;
+  background: transparent; color: rgba(255,255,255,.4);
+  transition: all .18s; font-family: 'Montserrat', sans-serif; font-weight: 700;
+}
+.cat-pill:hover { border-color: var(--purple); color: rgba(200,150,255,.9); }
+.cat-pill.active { background: rgba(155,61,232,.25); border-color: var(--purple); color: #fff; }
+.pin-grid {
+  columns: 4; column-gap: 12px;
+  padding: 0 28px 40px;
+}
+@media(max-width:1200px) { .pin-grid { columns: 3; } }
+.pin-card {
+  break-inside: avoid; margin-bottom: 12px;
+  border-radius: 16px; overflow: hidden;
+  cursor: pointer; position: relative;
+  transition: transform .35s cubic-bezier(.25,.8,.25,1), box-shadow .35s;
+  background: var(--card-bg);
+}
+.pin-card:hover {
+  transform: scale(1.04) translateY(-6px);
+  box-shadow: 0 24px 56px rgba(0,0,0,.5), 0 0 0 2px rgba(200,125,232,.4);
+  z-index: 5;
+}
+.pin-card img { width: 100%; display: block; transition: filter .3s; }
+.pin-card:hover img { filter: brightness(1.07) saturate(1.1); }
+.pin-overlay {
+  position: absolute; inset: 0; border-radius: 16px;
+  background: linear-gradient(to top, rgba(10,2,25,.92) 0%, transparent 55%);
+  opacity: 0; transition: opacity .3s;
+  display: flex; flex-direction: column; justify-content: flex-end; padding: 12px;
+}
+.pin-card:hover .pin-overlay { opacity: 1; }
+.pin-name { font-size: 11px; font-weight: 700; color: #fff; margin-bottom: 5px; }
+.pin-tags { display: flex; flex-wrap: wrap; gap: 3px; }
+.pin-tag {
+  font-size: 9px; padding: 2px 7px; border-radius: 8px;
+  background: rgba(155,61,232,.4); color: rgba(210,170,255,.9);
+  border: 1px solid rgba(155,61,232,.3);
+}
+/* WIP card placeholder */
+.pin-card.placeholder {
+  background: rgba(30,12,55,.5);
+  border: 1px dashed rgba(155,61,232,.2);
+  display: flex; align-items: center; justify-content: center;
+  min-height: 160px; cursor: default;
+}
+.pin-card.placeholder:hover { transform: none; box-shadow: none; }
+.placeholder-inner { text-align: center; padding: 20px; }
+.placeholder-icon { font-size: 28px; opacity: .25; display: block; margin-bottom: 8px; }
+.placeholder-text { font-size: 10px; color: rgba(255,255,255,.2); font-weight: 700; letter-spacing: .06em; }
+
+/* ── ADD VIEW ── */
+.add-view { padding: 32px 60px; max-width: 860px; }
+.add-title { font-size: 22px; font-weight: 900; letter-spacing: .06em; margin-bottom: 4px; }
+.add-sub { font-size: 12px; color: rgba(255,255,255,.35); font-weight: 600; margin-bottom: 28px; }
+.add-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.upload-zone {
+  border: 2px dashed rgba(155,61,232,.4);
+  border-radius: 20px; padding: 48px 20px;
+  text-align: center; cursor: pointer;
+  transition: all .25s; background: rgba(155,61,232,.05);
+  position: relative;
+}
+.upload-zone:hover { border-color: var(--purple); background: rgba(155,61,232,.1); }
+.upload-icon { font-size: 40px; display: block; margin-bottom: 12px; opacity: .5; }
+.upload-label { font-size: 13px; font-weight: 700; color: rgba(255,255,255,.5); margin-bottom: 6px; }
+.upload-hint { font-size: 10px; color: rgba(255,255,255,.25); letter-spacing: .06em; }
+.upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+#previewWrap { display: none; }
+#previewWrap img { width: 100%; border-radius: 16px; display: block; max-height: 300px; object-fit: cover; }
+.tags-panel {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 20px; padding: 20px;
+}
+.tags-panel-title { font-size: 10px; color: rgba(200,150,255,.6); letter-spacing: .14em; text-transform: uppercase; font-weight: 800; margin-bottom: 14px; }
+.tag-group { margin-bottom: 14px; }
+.tag-group-label { font-size: 9px; color: rgba(255,255,255,.3); letter-spacing: .1em; text-transform: uppercase; font-weight: 800; margin-bottom: 7px; }
+.tag-pills { display: flex; flex-wrap: wrap; gap: 5px; }
+.pill {
+  font-size: 10px; padding: 5px 12px; border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.1); cursor: pointer;
+  background: transparent; color: rgba(255,255,255,.45);
+  transition: all .15s; font-family: 'Montserrat', sans-serif; font-weight: 700;
+}
+.pill:hover { border-color: var(--purple); color: rgba(200,150,255,.9); }
+.pill.selected { background: rgba(155,61,232,.3); border-color: var(--purple); color: #fff; }
+.add-actions { margin-top: 22px; display: flex; gap: 12px; align-items: center; }
+.save-btn {
+  padding: 13px 36px; border-radius: 12px; border: none;
+  background: linear-gradient(135deg, var(--purple), #5a1faa);
+  color: #fff; font-family: 'Montserrat', sans-serif;
+  font-size: 13px; font-weight: 800; letter-spacing: .08em; cursor: pointer;
+  transition: all .25s;
+}
+.save-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 28px rgba(155,61,232,.4); }
+.save-note { font-size: 11px; color: rgba(255,255,255,.25); }
+.share-row { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+.share-label { font-size: 11px; color: rgba(255,255,255,.4); font-weight: 700; }
+.toggle { position: relative; width: 38px; height: 20px; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-track {
+  position: absolute; inset: 0; background: rgba(255,255,255,.1);
+  border-radius: 20px; cursor: pointer; transition: background .2s;
+}
+.toggle input:checked + .toggle-track { background: var(--purple); }
+.toggle-thumb {
+  position: absolute; top: 3px; left: 3px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #fff; transition: transform .2s;
+}
+.toggle input:checked ~ .toggle-thumb { transform: translateX(18px); }
+
+/* ── PROFILE (WIP) ── */
+.wip-view {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; min-height: calc(100vh - 160px);
+  text-align: center; padding: 40px;
+}
+.wip-icon { font-size: 60px; margin-bottom: 20px; opacity: .4; }
+.wip-title { font-size: 22px; font-weight: 900; color: rgba(255,255,255,.5); margin-bottom: 10px; letter-spacing: .04em; }
+.wip-desc { font-size: 13px; color: rgba(255,255,255,.25); line-height: 1.7; max-width: 380px; }
+.wip-progress { margin-top: 28px; width: 260px; }
+.progress-label { font-size: 9px; color: rgba(255,255,255,.25); letter-spacing: .1em; text-transform: uppercase; text-align: left; margin-bottom: 6px; font-weight: 700; }
+.progress-bar-wrap { height: 4px; background: rgba(255,255,255,.08); border-radius: 4px; overflow: hidden; }
+.progress-bar { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--purple), var(--purple-light)); }
+
+/* ── FULLSCREEN OVERLAY ── */
+#fsBackdrop {
+  position: fixed; inset: 0; background: rgba(5,1,15,.8);
+  backdrop-filter: blur(8px); z-index: 1000;
+  opacity: 0; pointer-events: none; transition: opacity .35s;
+}
+#fsBackdrop.show { opacity: 1; pointer-events: all; }
+#fsOverlay {
+  position: fixed; inset: 0; z-index: 1001;
+  display: flex; align-items: center; justify-content: center; gap: 20px;
+  opacity: 0; pointer-events: none; transition: opacity .35s;
+}
+#fsOverlay.show { opacity: 1; pointer-events: all; }
+.fs-img { max-width: min(520px, 55vw); max-height: 80vh; border-radius: 20px; box-shadow: 0 32px 80px rgba(0,0,0,.8); display: block; }
+.fs-panel {
+  width: 300px; background: rgba(255,255,255,.97);
+  border-radius: 20px; overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0,0,0,.5);
+  display: flex; flex-direction: column; max-height: 70vh;
+}
+.fs-panel-head {
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid rgba(0,0,0,.07);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.fs-panel-label { font-size: 9px; color: rgba(0,0,0,.35); letter-spacing: .18em; text-transform: uppercase; font-weight: 800; }
+.fs-close {
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 1px solid rgba(0,0,0,.1); background: rgba(0,0,0,.04);
+  cursor: pointer; font-size: 11px; color: rgba(0,0,0,.4);
+  display: flex; align-items: center; justify-content: center;
+  transition: all .2s;
+}
+.fs-close:hover { background: rgba(0,0,0,.1); color: #000; }
+.fs-body { padding: 16px; overflow-y: auto; flex: 1; }
+.fs-tag-block { padding: 10px 0; text-align: center; }
+.fs-tag-name { font-family: 'Crimson Text', serif; font-size: 22px; font-style: italic; color: #111; }
+.fs-tag-cat { font-size: 8px; color: rgba(130,60,200,.65); letter-spacing: .16em; text-transform: uppercase; font-weight: 800; margin: 3px 0 6px; }
+.fs-tag-desc { font-size: 11px; color: rgba(0,0,0,.55); line-height: 1.6; }
+.fs-sep { height: 1px; background: rgba(0,0,0,.06); margin: 10px 0; }
+
+/* ── TOAST ── */
+#toastWrap { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+.toast {
+  padding: 12px 18px; border-radius: 14px;
+  background: rgba(22,6,44,.97); border: 1px solid rgba(155,61,232,.35);
+  color: #fff; font-size: 12px; font-weight: 700;
+  box-shadow: 0 12px 40px rgba(0,0,0,.6);
+  backdrop-filter: blur(16px);
+  animation: toastIn .3s ease both;
+  pointer-events: all;
+  display: flex; align-items: center; gap: 10px;
+}
+.toast.success { border-color: rgba(100,230,130,.35); }
+.toast.success .ti { color: #7ee8a2; }
+.toast.error { border-color: rgba(255,100,100,.35); }
+.toast.error .ti { color: #ff8080; }
+.toast.info { border-color: rgba(155,61,232,.45); }
+.toast.info .ti { color: var(--purple-light); }
+.toast.out { animation: toastOut .3s ease forwards; }
+@keyframes toastIn { from { opacity: 0; transform: translateX(40px) scale(.9) } to { opacity: 1; transform: none } }
+@keyframes toastOut { to { opacity: 0; transform: translateX(40px) scale(.9) } }
+
+/* ── UTILS ── */
+.tag-pill-mini {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 9px; font-weight: 700; letter-spacing: .06em;
+  padding: 3px 10px; border-radius: 10px;
+}
+.tag-pill-mini.done { background: rgba(100,230,130,.12); color: rgba(120,230,140,.8); border: 1px solid rgba(100,230,130,.2); }
+.tag-pill-mini.wip { background: rgba(255,190,50,.1); color: rgba(255,210,80,.7); border: 1px dashed rgba(255,190,50,.3); }
+</style>
+</head>
+<body>
+
+<!-- ── LOADING ── -->
+<div id="loadingScreen">
+  <div class="load-logo">LUMINA</div>
+  <div class="load-sub">Cargando prototipo v0.3</div>
+  <div class="load-bar-wrap"><div class="load-bar"></div></div>
+</div>
+
+<!-- ── AUTH ── -->
+<div id="authScreen">
+  <div class="auth-wrap">
+    <div class="auth-logo">LUMINA</div>
+    <div class="auth-tagline">Biblioteca Visual · Proyecto Escolar</div>
+    <div class="auth-note">⚠ Sistema de autenticación en desarrollo — usa cualquier dato para continuar</div>
+    <div class="auth-field">
+      <label>Correo electrónico</label>
+      <input type="email" id="authEmail" placeholder="tu@correo.com">
+    </div>
+    <div class="auth-field">
+      <label>Contraseña</label>
+      <input type="password" id="authPass" placeholder="••••••••">
+    </div>
+    <button class="auth-btn" onclick="doLogin()">ENTRAR →</button>
+    <div class="auth-wip">Registro de cuenta — <span>próximamente</span></div>
+  </div>
+</div>
+
+<!-- ── APP ── -->
+<div id="app">
+
+  <!-- NAV -->
+  <nav class="topnav">
+    <div class="nav-bar">
+      <div class="nav-logo">LUMINA</div>
+      <button class="nav-tab active" id="nt-home" onclick="goView('home')">INICIO</button>
+      <button class="nav-tab" id="nt-gallery" onclick="goView('gallery')">GALERÍA</button>
+      <button class="nav-tab" id="nt-add" onclick="goView('add')">AGREGAR</button>
+      <button class="nav-tab disabled" title="En desarrollo">COMPARTIDAS</button>
+      <div class="nav-search">
+        <input type="text" placeholder="Buscar imágenes, etiquetas…" oninput="doSearch(this.value)">
+        <button class="nav-search-btn">Buscar</button>
+      </div>
+      <div class="nav-right">
+        <div class="nav-avatar" id="navAv" onclick="showToast('Perfil — próximamente 🚧','info')">?</div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- WIP BANNER -->
+  <div class="wip-bar">
+    <div class="wip-dot"></div>
+    Prototipo en desarrollo — v0.3 &nbsp;·&nbsp; Funciones activas: Galería, subida de imágenes y etiquetas &nbsp;·&nbsp; Pendiente: Autenticación real, perfiles, modo compartido
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- HOME -->
+    <div class="view active" id="view-home">
+      <div class="home-hero">
+        <div class="hero-bg-blob"></div>
+        <div class="hero-content">
+          <div class="hero-badge">Avance · Proyecto Final</div>
+          <div class="hero-title">LUMINA</div>
+          <div class="hero-desc">Biblioteca visual de referencia para diseñadores.<br>Organiza imágenes con etiquetas profesionales.</div>
+          <div class="hero-actions">
+            <button class="btn-primary" onclick="goView('gallery')">Ver galería →</button>
+            <button class="btn-outline" onclick="goView('add')">Subir imagen</button>
+          </div>
+          <div class="hero-stats">
+            <div>
+              <div class="stat-num" id="statImgs">0</div>
+              <div class="stat-label">Imágenes</div>
+            </div>
+            <div>
+              <div class="stat-num">4</div>
+              <div class="stat-label">Categorías</div>
+            </div>
+            <div>
+              <div class="stat-num">30+</div>
+              <div class="stat-label">Etiquetas</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FEATURE CARDS -->
+      <div class="home-features">
+        <div class="feature-card">
+          <div class="fc-icon">🖼️</div>
+          <div class="fc-title">Galería Personal</div>
+          <div class="fc-desc">Grid estilo Pinterest con hover animado. Subida de imágenes con validación de tamaño y tipo de archivo.</div>
+          <div class="fc-badge done">✓ Implementado</div>
+        </div>
+        <div class="feature-card">
+          <div class="fc-icon">🏷️</div>
+          <div class="fc-title">Sistema de Etiquetas</div>
+          <div class="fc-desc">Etiquetas organizadas por categorías: Paleta, Composición, Estilo y Técnica. Panel de info flotante al hacer hover.</div>
+          <div class="fc-badge done">✓ Implementado</div>
+        </div>
+        <div class="feature-card">
+          <div class="fc-icon">🔍</div>
+          <div class="fc-title">Búsqueda en Tiempo Real</div>
+          <div class="fc-desc">Filtro dinámico por nombre y etiquetas. Panel de sugerencias con autocompletado básico.</div>
+          <div class="fc-badge wip">⟳ En progreso</div>
+        </div>
+        <div class="feature-card wip">
+          <div class="fc-icon">👥</div>
+          <div class="fc-title">Modo Compartido</div>
+          <div class="fc-desc">Galería pública donde los usuarios podrán explorar imágenes de la comunidad con filtros avanzados.</div>
+          <div class="fc-badge pending">⋯ Próximamente</div>
+        </div>
+        <div class="feature-card wip">
+          <div class="fc-icon">👤</div>
+          <div class="fc-title">Perfiles de Usuario</div>
+          <div class="fc-desc">Perfil personalizable con avatar, banner, bio, colecciones y estadísticas de uso.</div>
+          <div class="fc-badge pending">⋯ Próximamente</div>
+        </div>
+        <div class="feature-card wip">
+          <div class="fc-icon">❤️</div>
+          <div class="fc-title">Favoritos y Colecciones</div>
+          <div class="fc-desc">Guardar imágenes en colecciones personalizadas y álbumes organizados por proyecto.</div>
+          <div class="fc-badge pending">⋯ Próximamente</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GALLERY -->
+    <div class="view" id="view-gallery">
+      <div class="gallery-header">
+        <div>
+          <div class="gallery-title">Galería</div>
+          <div class="gallery-sub" id="galleryCount">0 imágenes guardadas</div>
+        </div>
+        <div class="gallery-note">⚑ Datos de prueba — sin conexión a base de datos aún</div>
+      </div>
+      <div class="cat-pills" id="catPills">
+        <div class="cat-pill active" onclick="filterCat('all', this)">Todas</div>
+        <div class="cat-pill" onclick="filterCat('Paleta', this)">Paleta</div>
+        <div class="cat-pill" onclick="filterCat('Composición', this)">Composición</div>
+        <div class="cat-pill" onclick="filterCat('Estilo', this)">Estilo</div>
+        <div class="cat-pill" onclick="filterCat('Técnica', this)">Técnica</div>
+      </div>
+      <div class="pin-grid" id="pinGrid"></div>
+    </div>
+
+    <!-- ADD -->
+    <div class="view" id="view-add">
+      <div class="add-view">
+        <div class="add-title">Agregar Imagen</div>
+        <div class="add-sub">Sube una imagen y selecciona sus etiquetas de referencia visual</div>
+        <div class="add-grid">
+          <div>
+            <div class="upload-zone" id="uploadZone">
+              <span class="upload-icon">📁</span>
+              <div class="upload-label">Arrastra o haz clic para seleccionar</div>
+              <div class="upload-hint">JPG, PNG · Máx. 800KB</div>
+              <input type="file" accept="image/*" onchange="handleFile(this)">
+            </div>
+            <div id="previewWrap" style="margin-top:12px">
+              <img id="previewImg" src="">
+            </div>
+            <div class="share-row" style="margin-top:14px">
+              <label class="toggle">
+                <input type="checkbox" id="shareToggle">
+                <div class="toggle-track"></div>
+                <div class="toggle-thumb"></div>
+              </label>
+              <span class="share-label">Compartir en galería pública</span>
+              <span class="tag-pill-mini pending" style="background:rgba(155,61,232,.1);color:rgba(200,150,255,.55);border:1px dashed rgba(155,61,232,.3);font-size:8px">próximamente</span>
+            </div>
+          </div>
+          <div class="tags-panel">
+            <div class="tags-panel-title">Etiquetas de referencia</div>
+            <div id="tagsForm"></div>
+          </div>
+        </div>
+        <div class="add-actions">
+          <button class="save-btn" onclick="saveImg()">GUARDAR EN LUMINA</button>
+          <span class="save-note">* Se guarda solo en esta sesión (sin base de datos aún)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROFILE (WIP) -->
+    <div class="view" id="view-profile">
+      <div class="wip-view">
+        <div class="wip-icon">🚧</div>
+        <div class="wip-title">Perfil de Usuario</div>
+        <div class="wip-desc">Esta sección está en construcción. Se implementará con Firebase Auth y Firestore para almacenar la información del usuario, avatar, bio y colecciones.</div>
+        <div class="wip-progress">
+          <div class="progress-label">Progreso estimado</div>
+          <div class="progress-bar-wrap"><div class="progress-bar" style="width:25%"></div></div>
+          <div style="font-size:10px;color:rgba(255,255,255,.2);margin-top:6px;text-align:right">25%</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- .content -->
+</div><!-- #app -->
+
+<!-- ── FULLSCREEN ── -->
+<div id="fsBackdrop" onclick="closeFS()"></div>
+<div id="fsOverlay">
+  <div id="fsImgWrap"></div>
+  <div class="fs-panel">
+    <div class="fs-panel-head">
+      <div class="fs-panel-label">Info de imagen</div>
+      <button class="fs-close" onclick="closeFS()">✕</button>
+    </div>
+    <div class="fs-body" id="fsBody"></div>
+  </div>
+</div>
+
+<!-- ── TOASTS ── -->
+<div id="toastWrap"></div>
+
+<script>
+/* ===========================
+   LUMINA — LÓGICA v0.3
+   =========================== */
+
+// ── DATOS DE EJEMPLO (placeholder images de picsum.photos) ──
+const SAMPLE_IMGS = [
+  { name: 'Composición geométrica', src: 'https://picsum.photos/seed/lumina1/400/520', tags: { 'Composición': ['Asimetría', 'Geometría'], 'Paleta': ['Monocromático'] } },
+  { name: 'Paleta análoga cálida', src: 'https://picsum.photos/seed/lumina2/400/300', tags: { 'Paleta': ['Análogo', 'Saturado'], 'Estilo': ['Orgánico'] } },
+  { name: 'Retrato editorial', src: 'https://picsum.photos/seed/lumina3/400/560', tags: { 'Estilo': ['Editorial', 'Minimalismo'], 'Técnica': ['Alto Contraste'] } },
+  { name: 'Textura abstracta', src: 'https://picsum.photos/seed/lumina4/400/380', tags: { 'Técnica': ['Textura'], 'Paleta': ['Neutros'] } },
+  { name: 'Layout editorial', src: 'https://picsum.photos/seed/lumina5/400/440', tags: { 'Composición': ['Regla de Tercios'], 'Estilo': ['Editorial'] } },
+  { name: 'Gradiente pastel', src: 'https://picsum.photos/seed/lumina6/400/320', tags: { 'Paleta': ['Pastel', 'Análogo'] } },
+  { name: 'Fotografía urbana', src: 'https://picsum.photos/seed/lumina7/400/500', tags: { 'Técnica': ['Silueta', 'Profundidad de Campo'], 'Estilo': ['Urbano'] } },
+  { name: 'Color complementario', src: 'https://picsum.photos/seed/lumina8/400/360', tags: { 'Paleta': ['Complementario', 'Saturado'] } },
+];
+
+// ── CATEGORÍAS Y ETIQUETAS ──
+const CATS = {
+  'Paleta':       ['Monocromático','Análogo','Complementario','Saturado','Pastel','Neutros'],
+  'Composición':  ['Regla de Tercios','Asimetría','Geometría','Espacio Negativo','Simetría'],
+  'Estilo':       ['Minimalismo','Editorial','Orgánico','Urbano','Abstracto'],
+  'Técnica':      ['Alto Contraste','Textura','Silueta','Profundidad de Campo'],
+};
+
+const TAG_INFO = {
+  'Monocromático':       { cat:'Paleta', desc:'Una sola familia de color en distintos valores de brillo y saturación.' },
+  'Análogo':             { cat:'Paleta', desc:'Colores adyacentes en el círculo cromático, produce armonía visual.' },
+  'Complementario':      { cat:'Paleta', desc:'Colores opuestos en el círculo; generan máximo contraste y tensión.' },
+  'Saturado':            { cat:'Paleta', desc:'Alta intensidad de color; transmite energía y vivacidad.' },
+  'Pastel':              { cat:'Paleta', desc:'Tonos suaves y de baja saturación; evocan delicadeza y modernidad.' },
+  'Neutros':             { cat:'Paleta', desc:'Grises, blancos, negros y beiges; base sólida sin distracción.' },
+  'Regla de Tercios':    { cat:'Composición', desc:'División del encuadre en 9 partes; sujeto en intersecciones clave.' },
+  'Asimetría':           { cat:'Composición', desc:'Balance visual sin simetría exacta; crea dinamismo y tensión creativa.' },
+  'Geometría':           { cat:'Composición', desc:'Uso de formas regulares como estructura compositiva.' },
+  'Espacio Negativo':    { cat:'Composición', desc:'Zona vacía que da peso y respiro al elemento principal.' },
+  'Simetría':            { cat:'Composición', desc:'Reflejo especular; evoca orden, estabilidad y elegancia.' },
+  'Minimalismo':         { cat:'Estilo', desc:'Solo los elementos esenciales; "menos es más".' },
+  'Editorial':           { cat:'Estilo', desc:'Composición propia de revistas y libros de arte; muy cuidada.' },
+  'Orgánico':            { cat:'Estilo', desc:'Formas naturales e irregulares; sensación viva y cálida.' },
+  'Urbano':              { cat:'Estilo', desc:'Estética de la ciudad; arquitectura, gráfica y vida cotidiana.' },
+  'Abstracto':           { cat:'Estilo', desc:'Sin referencia figurativa directa; expresión pura de forma y color.' },
+  'Alto Contraste':      { cat:'Técnica', desc:'Diferencia extrema entre zonas claras y oscuras.' },
+  'Textura':             { cat:'Técnica', desc:'Superficie visual que aporta profundidad y tactilidad.' },
+  'Silueta':             { cat:'Técnica', desc:'Figura opaca contra fondo iluminado; forma como protagonista.' },
+  'Profundidad de Campo':{ cat:'Técnica', desc:'Zona nítida limitada; separa sujeto del fondo con desenfoque.' },
+};
+
+let myImages = [...SAMPLE_IMGS];
+let currentView = 'home';
+let selectedTags = {};
+let currentFile = null;
+let filterActive = 'all';
+let currentFSImg = null;
+
+// ── INIT ──
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    document.getElementById('loadingScreen').classList.add('fade');
+    setTimeout(() => {
+      document.getElementById('loadingScreen').style.display = 'none';
+      document.getElementById('authScreen').classList.add('show');
+    }, 600);
+  }, 2000);
+});
+
+function doLogin() {
+  const email = document.getElementById('authEmail').value.trim();
+  const pass  = document.getElementById('authPass').value;
+  if (!email || !pass) { showToast('Completa los campos para continuar', 'error'); return; }
+  document.getElementById('authScreen').classList.remove('show');
+  document.getElementById('app').classList.add('show');
+  const initials = email.charAt(0).toUpperCase();
+  document.getElementById('navAv').textContent = initials;
+  buildTagsForm();
+  renderGallery();
+  updateStatImgs();
+  showToast('¡Bienvenido a Lumina! 👋', 'info');
+}
+
+// ── VIEWS ──
+function goView(v) {
+  document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-tab:not(.disabled)').forEach(el => el.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  const nt = document.getElementById('nt-'+v);
+  if (nt) nt.classList.add('active');
+  currentView = v;
+  if (v === 'gallery') { renderGallery(); }
+  if (v === 'add') { buildTagsForm(); }
+}
+
+// ── GALLERY ──
+function renderGallery(filter) {
+  const grid = document.getElementById('pinGrid');
+  grid.innerHTML = '';
+  const cat = filter || filterActive;
+  let imgs = myImages;
+  if (cat !== 'all') {
+    imgs = imgs.filter(img => img.tags[cat] && img.tags[cat].length);
+  }
+  // Busqueda activa
+  const sq = document.querySelector('.nav-search input')?.value.trim().toLowerCase();
+  if (sq) {
+    imgs = imgs.filter(img => {
+      const name = (img.name||'').toLowerCase();
+      const tags = Object.values(img.tags).flat().join(' ').toLowerCase();
+      return name.includes(sq) || tags.includes(sq);
+    });
+  }
+  document.getElementById('galleryCount').textContent = imgs.length + ' imágenes guardadas';
+
+  imgs.forEach(img => {
+    const card = document.createElement('div');
+    card.className = 'pin-card';
+    const allTags = Object.values(img.tags).flat().slice(0,3);
+    card.innerHTML = `
+      <div class="pin-img-wrap">
+        <img src="${img.src}" loading="lazy" alt="${img.name}">
+      </div>
+      <div class="pin-overlay">
+        <div class="pin-name">${img.name}</div>
+        <div class="pin-tags">${allTags.map(t=>`<span class="pin-tag">${t}</span>`).join('')}</div>
+      </div>
+    `;
+    card.onclick = () => openFS(img);
+    grid.appendChild(card);
+  });
+
+  // Placeholders (dan sensación de "en construcción")
+  const placeholders = [
+    { h: 200, label: '+ Agrega una imagen' },
+    { h: 160, label: 'Próximamente...' },
+  ];
+  placeholders.forEach(p => {
+    const ph = document.createElement('div');
+    ph.className = 'pin-card placeholder';
+    ph.style.height = p.h + 'px';
+    ph.innerHTML = `<div class="placeholder-inner">
+      <span class="placeholder-icon">🖼️</span>
+      <div class="placeholder-text">${p.label}</div>
+    </div>`;
+    ph.onclick = () => { if(p.label.includes('Agrega')) goView('add'); };
+    ph.style.cursor = p.label.includes('Agrega') ? 'pointer' : 'default';
+    grid.appendChild(ph);
+  });
+}
+
+function filterCat(cat, el) {
+  document.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  filterActive = cat;
+  renderGallery(cat);
+}
+
+function doSearch(val) {
+  if (currentView === 'gallery') renderGallery();
+}
+
+// ── FULLSCREEN ──
+function openFS(img) {
+  currentFSImg = img;
+  document.getElementById('fsImgWrap').innerHTML =
+    `<img class="fs-img" src="${img.src}" alt="${img.name}">`;
+  const body = document.getElementById('fsBody');
+  const allTags = Object.values(img.tags).flat();
+  body.innerHTML = `<div style="font-size:13px;font-weight:700;color:#111;margin-bottom:12px">${img.name}</div>` +
+    allTags.map((tag, i) => {
+      const info = TAG_INFO[tag] || {};
+      return `<div class="fs-tag-block">
+        <div class="fs-tag-name">${tag}</div>
+        <div class="fs-tag-cat">${info.cat||''}</div>
+        <div class="fs-tag-desc">${info.desc||'Sin descripción aún.'}</div>
+      </div>${i < allTags.length-1 ? '<div class="fs-sep"></div>' : ''}`;
+    }).join('');
+  document.getElementById('fsBackdrop').classList.add('show');
+  document.getElementById('fsOverlay').classList.add('show');
+}
+function closeFS() {
+  document.getElementById('fsBackdrop').classList.remove('show');
+  document.getElementById('fsOverlay').classList.remove('show');
+}
+
+// ── ADD / SAVE ──
+function handleFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 800000) { showToast('Imagen muy grande. Máx. 800KB', 'error'); return; }
+  currentFile = file;
+  const r = new FileReader();
+  r.onload = ev => {
+    document.getElementById('previewImg').src = ev.target.result;
+    document.getElementById('previewWrap').style.display = 'block';
+  };
+  r.readAsDataURL(file);
+}
+
+function saveImg() {
+  if (!currentFile) { showToast('Selecciona una imagen primero', 'error'); return; }
+  const allTags = {}; let hasTag = false;
+  Object.entries(selectedTags).forEach(([cat, set]) => {
+    if (set.size > 0) { allTags[cat] = [...set]; hasTag = true; }
+  });
+  if (!hasTag) { showToast('Agrega al menos una etiqueta', 'error'); return; }
+  const r = new FileReader();
+  r.onload = ev => {
+    myImages.unshift({ name: currentFile.name, src: ev.target.result, tags: allTags });
+    currentFile = null;
+    document.getElementById('previewWrap').style.display = 'none';
+    document.getElementById('previewImg').src = '';
+    buildTagsForm();
+    updateStatImgs();
+    showToast('¡Imagen guardada en Lumina! ✓', 'info');
+    goView('gallery');
+  };
+  r.readAsDataURL(currentFile);
+}
+
+function buildTagsForm() {
+  const form = document.getElementById('tagsForm');
+  form.innerHTML = ''; selectedTags = {};
+  Object.entries(CATS).forEach(([cat, vals]) => {
+    selectedTags[cat] = new Set();
+    const group = document.createElement('div');
+    group.className = 'tag-group';
+    group.innerHTML = `<div class="tag-group-label">${cat}</div><div class="tag-pills"></div>`;
+    form.appendChild(group);
+    const pillWrap = group.querySelector('.tag-pills');
+    vals.forEach(v => {
+      const p = document.createElement('div');
+      p.className = 'pill'; p.textContent = v;
+      p.onclick = () => {
+        if (selectedTags[cat].has(v)) { selectedTags[cat].delete(v); p.classList.remove('selected'); }
+        else { selectedTags[cat].add(v); p.classList.add('selected'); }
+      };
+      pillWrap.appendChild(p);
+    });
+  });
+}
+
+function updateStatImgs() {
+  document.getElementById('statImgs').textContent = myImages.length;
+}
+
+// ── TOAST ──
+function showToast(msg, type='info') {
+  const icons = { info:'💜', success:'✓', error:'✕', warning:'⚠' };
+  const wrap = document.getElementById('toastWrap');
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.innerHTML = `<span class="ti">${icons[type]||'ℹ'}</span><span>${msg}</span>`;
+  wrap.appendChild(t);
+  setTimeout(() => {
+    t.classList.add('out');
+    setTimeout(() => t.remove(), 300);
+  }, 3000);
+}
+</script>
+</body>
+</html>

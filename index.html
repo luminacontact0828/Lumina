@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lumina — Avance v2.0</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800;900&family=Crimson+Text:ital@0;1&family=Nunito:wght@400;600;700;800&family=Pompiere&display=swap" rel="stylesheet">
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+<style>
+/* ===========================
+   LUMINA — AVANCE v2.0
+   Proyecto: Biblioteca Visual
+   Firebase: Auth + Firestore
+   Funciones: Guardar / Leer / Eliminar imágenes reales
+   =========================== */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body { font-family: 'Montserrat', sans-serif; background: #12051f; color: #fff; }
+
+:root {
+  --purple:       #9b3de8;
+  --purple-light: #c87de8;
+  --pink:         #f8cee0;
+  --dark:         #1a0a30;
+  --card-bg:      rgba(38, 20, 62, 0.72);
+  --border:       rgba(200, 125, 232, 0.22);
+}
+
+/* ── LOADING ── */
+#loadingScreen {
+  position: fixed; inset: 0; z-index: 9999;
+  background: linear-gradient(160deg, #fad2c9 0%, #c87de8 45%, #1a0a30 100%);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px;
+  transition: opacity .6s ease;
+}
+#loadingScreen.fade { opacity: 0; pointer-events: none; }
+.load-logo { font-size: 64px; font-weight: 900; letter-spacing: .14em; color: #fff; text-shadow: 0 0 60px rgba(155,61,232,.6); }
+.load-sub  { font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: rgba(255,255,255,.5); }
+.load-bar-wrap { width: 180px; height: 3px; background: rgba(255,255,255,.15); border-radius: 10px; overflow: hidden; }
+.load-bar { height: 100%; background: #fff; border-radius: 10px; animation: loadFill 1.6s ease forwards; }
+@keyframes loadFill { from { width: 0 } to { width: 100% } }
+
+/* ── AUTH ── */
+#authScreen {
+  position: fixed; inset: 0; z-index: 900;
+  background: rgba(10,2,25,.96);
+  display: none; align-items: center; justify-content: center;
+}
+#authScreen.show { display: flex; }
+.auth-wrap {
+  width: 380px; background: rgba(30,10,55,.95);
+  border: 1px solid var(--border); border-radius: 24px;
+  padding: 2.5rem; box-shadow: 0 40px 100px rgba(0,0,0,.6);
+  animation: popIn .4s cubic-bezier(.25,.8,.25,1) both;
+}
+@keyframes popIn { from { opacity:0; transform: scale(.93) translateY(20px) } to { opacity:1; transform: scale(1) translateY(0) } }
+
+.auth-logo    { font-size: 36px; font-weight: 900; letter-spacing: .12em; text-align: center; margin-bottom: 4px; }
+.auth-tagline { font-size: 10px; color: rgba(255,255,255,.3); letter-spacing: .18em; text-transform: uppercase; text-align: center; margin-bottom: .6rem; }
+
+/* Badge avance 2 */
+.auth-badge {
+  text-align: center; margin-bottom: 1.6rem;
+  font-size: 10px; font-weight: 800; letter-spacing: .1em;
+}
+.auth-badge span {
+  background: linear-gradient(90deg, rgba(155,61,232,.25), rgba(200,125,232,.18));
+  border: 1px solid rgba(155,61,232,.4); border-radius: 20px;
+  padding: 5px 14px; color: var(--purple-light);
+}
+.auth-badge span::before { content: '🔥 '; }
+
+.auth-tabs { display: flex; border-bottom: 1px solid rgba(255,255,255,.08); margin-bottom: 1.4rem; }
+.auth-tab {
+  flex: 1; padding: 10px; text-align: center; font-size: 12px;
+  color: rgba(255,255,255,.35); cursor: pointer; border-bottom: 2px solid transparent;
+  margin-bottom: -1px; transition: all .2s; font-weight: 700; letter-spacing: .04em;
+}
+.auth-tab.active { color: var(--purple-light); border-bottom-color: var(--purple-light); }
+
+.auth-field { margin-bottom: 12px; }
+.auth-field label { font-size: 9px; color: rgba(255,255,255,.35); letter-spacing: .12em; text-transform: uppercase; font-weight: 800; display: block; margin-bottom: 6px; }
+.auth-field input {
+  width: 100%; padding: 11px 14px;
+  background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
+  border-radius: 12px; color: #fff; font-family: 'Montserrat', sans-serif;
+  font-size: 13px; outline: none; transition: border-color .2s;
+}
+.auth-field input:focus { border-color: var(--purple); }
+
+.auth-btn {
+  width: 100%; margin-top: 8px; padding: 13px;
+  background: linear-gradient(135deg, #9b3de8, #5a1faa);
+  border: none; border-radius: 12px; color: #fff;
+  font-family: 'Montserrat', sans-serif; font-size: 13px; font-weight: 800;
+  letter-spacing: .08em; cursor: pointer; transition: all .2s;
+}
+.auth-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 30px rgba(155,61,232,.4); }
+.auth-error { font-size: 11px; color: #ff8080; text-align: center; margin-top: 8px; min-height: 16px; }
+.auth-divider { display: flex; align-items: center; gap: 10px; margin: 14px 0; color: rgba(255,255,255,.2); font-size: 10px; font-weight: 700; letter-spacing: .08em; }
+.auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,.08); }
+.auth-google-btn {
+  width: 100%; padding: 12px; border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.05);
+  color: #fff; font-family: 'Montserrat', sans-serif; font-size: 13px; font-weight: 700;
+  cursor: pointer; transition: all .2s; display: flex; align-items: center; justify-content: center; gap: 10px; letter-spacing: .04em;
+}
+.auth-google-btn:hover { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.25); transform: translateY(-1px); }
+
+/* ── SHELL ── */
+#app { display: none; flex-direction: column; height: 100vh; overflow: hidden; background: linear-gradient(160deg, #1a0535 0%, #0e0220 100%); }
+#app.show { display: flex; }
+
+/* ── TOPNAV ── */
+.topnav { padding: 16px 24px 0; flex-shrink: 0; }
+.nav-bar {
+  background: rgba(60,35,85,.88); backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,.07); border-radius: 50px;
+  padding: 10px 16px; display: flex; align-items: center; gap: 8px;
+  box-shadow: 0 4px 24px rgba(0,0,0,.3);
+}
+.nav-logo { font-size: 18px; font-weight: 900; letter-spacing: .12em; color: #fff; margin-right: 6px; }
+.nav-tab {
+  padding: 9px 22px; border-radius: 30px; border: none;
+  background: none; color: rgba(255,255,255,.65);
+  font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 700;
+  cursor: pointer; transition: all .18s; white-space: nowrap;
+}
+.nav-tab:hover { color: #fff; }
+.nav-tab.active { border: 2px solid rgba(200,150,220,.6); color: #fff; padding: 7px 22px; }
+
+.nav-search {
+  display: flex; align-items: center; background: #fff; border-radius: 50px;
+  width: 320px; padding: 4px 4px 4px 14px; gap: 6px; margin: 0 8px;
+  box-shadow: 0 2px 12px rgba(0,0,0,.15);
+}
+.nav-search input { background: none; border: none; outline: none; font-family: 'Montserrat', sans-serif; font-size: 13px; color: #333; flex: 1; padding: 7px 4px; }
+.nav-search input::placeholder { color: #bbb; }
+.nav-search-btn { background: #23354a; color: #fff; border: none; padding: 9px 20px; border-radius: 50px; font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: background .2s; }
+.nav-search-btn:hover { background: #1a2a3a; }
+
+.nav-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.nav-avatar {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--purple), var(--purple-light));
+  border: 2px solid rgba(200,150,255,.35);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 900; cursor: pointer; transition: all .2s;
+}
+.nav-avatar:hover { transform: scale(1.08); border-color: rgba(200,150,255,.7); }
+.nav-logout {
+  padding: 7px 14px; border-radius: 20px; border: 1px solid rgba(255,100,100,.25);
+  background: rgba(255,100,100,.07); color: rgba(255,150,150,.8);
+  font-family: 'Montserrat', sans-serif; font-size: 11px; font-weight: 700;
+  cursor: pointer; transition: all .2s; letter-spacing: .04em;
+}
+.nav-logout:hover { background: rgba(255,100,100,.15); border-color: rgba(255,100,100,.45); color: #ff8080; }
+
+/* ── PROGRESS BANNER ── */
+.progress-banner {
+  margin: 10px 24px 0;
+  padding: 10px 18px;
+  background: rgba(100,230,130,.07);
+  border: 1px solid rgba(100,230,130,.2);
+  border-radius: 12px;
+  display: flex; align-items: center; gap: 12px;
+  font-size: 11px; color: rgba(140,230,160,.75);
+  font-weight: 700; letter-spacing: .04em;
+}
+.progress-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(100,230,130,.8); animation: pulse 2s infinite; flex-shrink: 0; }
+@keyframes pulse { 0%,100% { opacity:.5; transform:scale(.8) } 50% { opacity:1; transform:scale(1.2) } }
+.progress-tag { font-size: 9px; font-weight: 800; letter-spacing: .06em; padding: 2px 8px; border-radius: 8px; background: rgba(100,230,130,.15); color: rgba(140,230,160,.9); border: 1px solid rgba(100,230,130,.25); }
+.firebase-tag { background: rgba(255,160,60,.12); color: rgba(255,180,80,.8); border-color: rgba(255,160,60,.3); }
+
+/* ── CONTENT ── */
+.content { flex: 1; overflow-y: auto; min-height: 0; }
+.content::-webkit-scrollbar { width: 6px; }
+.content::-webkit-scrollbar-track { background: transparent; }
+.content::-webkit-scrollbar-thumb { background: rgba(155,61,232,.3); border-radius: 6px; }
+
+/* ── VIEWS ── */
+.view { display: none; animation: fadeUp .35s ease both; }
+.view.active { display: block; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(16px) } to { opacity:1; transform:translateY(0) } }
+
+/* ── HOME ── */
+.home-hero {
+  min-height: calc(100vh - 160px);
+  display: flex; align-items: center;
+  padding: 40px 60px; position: relative; overflow: hidden;
+}
+.hero-bg-blob {
+  position: absolute; right: -80px; top: -60px;
+  width: 640px; height: 640px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(155,61,232,.2) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero-content { position: relative; z-index: 2; max-width: 600px; }
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: rgba(155,61,232,.18); border: 1px solid rgba(155,61,232,.35);
+  border-radius: 20px; padding: 5px 14px; margin-bottom: 24px;
+  font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--purple-light);
+}
+.hero-badge::before { content: '●'; font-size: 7px; color: #a0f0a0; animation: pulse 2s infinite; }
+.hero-title {
+  font-size: clamp(72px, 10vw, 130px);
+  font-weight: 900; letter-spacing: .08em; line-height: .95;
+  color: #fff; margin-bottom: 20px;
+  text-shadow: 0 4px 40px rgba(155,61,232,.3);
+}
+.hero-desc {
+  font-size: 20px; line-height: 1.7;
+  color: rgba(255,255,255,.55); font-family: 'Pompiere', cursive; margin-bottom: 36px;
+}
+.hero-actions { display: flex; gap: 14px; align-items: center; }
+.btn-primary {
+  padding: 15px 36px; border-radius: 50px;
+  background: linear-gradient(135deg, var(--purple), #5a1faa);
+  border: none; color: #fff; font-family: 'Montserrat', sans-serif; font-size: 14px; font-weight: 800;
+  letter-spacing: .08em; cursor: pointer; transition: all .25s;
+  box-shadow: 0 12px 36px rgba(155,61,232,.35);
+}
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 18px 48px rgba(155,61,232,.5); }
+.btn-outline {
+  padding: 15px 36px; border-radius: 50px;
+  background: transparent; border: 2px solid rgba(255,255,255,.2); color: rgba(255,255,255,.7);
+  font-family: 'Montserrat', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: .06em; cursor: pointer; transition: all .25s;
+}
+.btn-outline:hover { border-color: rgba(255,255,255,.5); color: #fff; }
+.hero-stats {
+  display: flex; gap: 36px; margin-top: 44px; padding-top: 28px;
+  border-top: 1px solid rgba(255,255,255,.07);
+}
+.stat-num { font-size: 28px; font-weight: 900; color: #fff; line-height: 1; }
+.stat-label { font-size: 10px; color: rgba(255,255,255,.35); letter-spacing: .1em; text-transform: uppercase; margin-top: 4px; font-weight: 700; }
+
+/* Feature cards */
+.home-features { padding: 16px 60px 60px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.feature-card {
+  background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: 20px; padding: 24px; transition: all .25s; position: relative; overflow: hidden;
+}
+.feature-card::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(155,61,232,.06), transparent); opacity: 0; transition: opacity .25s;
+}
+.feature-card:hover { border-color: rgba(200,125,232,.4); transform: translateY(-2px); }
+.feature-card:hover::before { opacity: 1; }
+.feature-card.wip { opacity: .6; }
+.fc-icon { font-size: 28px; margin-bottom: 12px; }
+.fc-title { font-size: 14px; font-weight: 800; color: #fff; margin-bottom: 6px; letter-spacing: .04em; }
+.fc-desc { font-size: 12px; color: rgba(255,255,255,.45); line-height: 1.6; }
+.fc-badge {
+  display: inline-block; margin-top: 12px; font-size: 9px; font-weight: 800;
+  padding: 3px 10px; border-radius: 8px; letter-spacing: .08em; text-transform: uppercase;
+}
+.fc-badge.done    { background: rgba(100,230,130,.12); color: rgba(120,230,140,.8); border: 1px solid rgba(100,230,130,.2); }
+.fc-badge.wip     { background: rgba(255,190,50,.1); color: rgba(255,210,80,.7); border: 1px dashed rgba(255,190,50,.3); }
+.fc-badge.pending { background: rgba(155,61,232,.1); color: rgba(200,150,255,.6); border: 1px dashed rgba(155,61,232,.3); }
+
+/* ── GALLERY ── */
+.gallery-header { padding: 24px 28px 14px; display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.gallery-title { font-size: 22px; font-weight: 900; letter-spacing: .06em; }
+.gallery-sub { font-size: 12px; color: rgba(255,255,255,.35); margin-top: 3px; font-weight: 600; }
+.gallery-note {
+  font-size: 11px; color: rgba(100,230,130,.65);
+  background: rgba(100,230,130,.07); border: 1px solid rgba(100,230,130,.2);
+  padding: 6px 14px; border-radius: 10px; font-weight: 700; display: flex; align-items: center; gap: 6px;
+}
+.gallery-note::before { content: '●'; font-size: 7px; color: rgba(100,230,130,.8); }
+.cat-pills { display: flex; gap: 7px; padding: 0 28px 16px; flex-wrap: wrap; }
+.cat-pill {
+  font-size: 11px; padding: 6px 16px; border-radius: 20px;
+  border: 1px solid rgba(255,255,255,.1); cursor: pointer;
+  background: transparent; color: rgba(255,255,255,.4);
+  transition: all .18s; font-family: 'Montserrat', sans-serif; font-weight: 700;
+}
+.cat-pill:hover { border-color: var(--purple); color: rgba(200,150,255,.9); }
+.cat-pill.active { background: rgba(155,61,232,.25); border-color: var(--purple); color: #fff; }
+
+/* Grid */
+.pin-grid { columns: 4; column-gap: 12px; padding: 0 28px 40px; }
+@media(max-width:1200px) { .pin-grid { columns: 3; } }
+.pin-card {
+  break-inside: avoid; margin-bottom: 12px;
+  border-radius: 16px; overflow: hidden; cursor: pointer; position: relative;
+  transition: transform .35s cubic-bezier(.25,.8,.25,1), box-shadow .35s;
+  background: var(--card-bg);
+}
+.pin-card:hover { transform: scale(1.04) translateY(-6px); box-shadow: 0 24px 56px rgba(0,0,0,.5), 0 0 0 2px rgba(200,125,232,.4); z-index: 5; }
+.pin-card img { width: 100%; display: block; transition: filter .3s; }
+.pin-card:hover img { filter: brightness(1.07) saturate(1.1); }
+.pin-overlay {
+  position: absolute; inset: 0; border-radius: 16px;
+  background: linear-gradient(to top, rgba(10,2,25,.92) 0%, transparent 55%);
+  opacity: 0; transition: opacity .3s;
+  display: flex; flex-direction: column; justify-content: flex-end; padding: 12px;
+}
+.pin-card:hover .pin-overlay { opacity: 1; }
+.pin-name { font-size: 11px; font-weight: 700; color: #fff; margin-bottom: 5px; }
+.pin-tags { display: flex; flex-wrap: wrap; gap: 3px; }
+.pin-tag { font-size: 9px; padding: 2px 7px; border-radius: 8px; background: rgba(155,61,232,.4); color: rgba(210,170,255,.9); border: 1px solid rgba(155,61,232,.3); }
+.pin-delete {
+  position: absolute; top: 8px; right: 8px;
+  width: 28px; height: 28px; border-radius: 50%;
+  border: none; background: rgba(200,50,50,.85); color: #fff;
+  font-size: 11px; cursor: pointer; display: none;
+  align-items: center; justify-content: center; z-index: 6;
+  transition: background .18s;
+}
+.pin-card:hover .pin-delete { display: flex; }
+.pin-delete:hover { background: rgba(220,30,30,1); }
+
+/* Loading & empty states */
+.gallery-loading { text-align: center; padding: 4rem 2rem; color: rgba(255,255,255,.3); }
+.gallery-loading .spinner { width: 36px; height: 36px; border: 3px solid rgba(155,61,232,.2); border-top-color: var(--purple); border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 14px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.empty-state { text-align: center; padding: 4rem 2rem; color: rgba(255,255,255,.35); }
+.empty-state .es-icon { font-size: 48px; display: block; margin-bottom: 14px; opacity: .2; }
+.empty-state h3 { font-size: 18px; font-weight: 800; color: rgba(255,255,255,.45); margin-bottom: 8px; }
+.empty-state p { font-size: 13px; }
+
+/* ── ADD VIEW ── */
+.add-view { padding: 32px 60px; max-width: 860px; }
+.add-title { font-size: 22px; font-weight: 900; letter-spacing: .06em; margin-bottom: 4px; }
+.add-sub   { font-size: 12px; color: rgba(255,255,255,.35); font-weight: 600; margin-bottom: 28px; }
+.add-grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+
+.upload-zone {
+  border: 2px dashed rgba(155,61,232,.4); border-radius: 20px;
+  padding: 48px 20px; text-align: center; cursor: pointer;
+  transition: all .25s; background: rgba(155,61,232,.05); position: relative;
+}
+.upload-zone:hover { border-color: var(--purple); background: rgba(155,61,232,.1); }
+.upload-icon { font-size: 40px; display: block; margin-bottom: 12px; opacity: .5; }
+.upload-label { font-size: 13px; font-weight: 700; color: rgba(255,255,255,.5); margin-bottom: 6px; }
+.upload-hint  { font-size: 10px; color: rgba(255,255,255,.25); letter-spacing: .06em; }
+.upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+#previewWrap { display: none; margin-top: 12px; }
+#previewWrap img { width: 100%; border-radius: 16px; display: block; max-height: 280px; object-fit: cover; }
+
+/* Image name field */
+.img-name-field { margin-top: 14px; }
+.img-name-field label { font-size: 9px; color: rgba(255,255,255,.35); letter-spacing: .12em; text-transform: uppercase; font-weight: 800; display: block; margin-bottom: 6px; }
+.img-name-field input {
+  width: 100%; padding: 10px 14px;
+  background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
+  border-radius: 12px; color: #fff; font-family: 'Montserrat', sans-serif;
+  font-size: 13px; outline: none; transition: border-color .2s;
+}
+.img-name-field input:focus { border-color: var(--purple); }
+
+.tags-panel { background: var(--card-bg); border: 1px solid var(--border); border-radius: 20px; padding: 20px; }
+.tags-panel-title { font-size: 10px; color: rgba(200,150,255,.6); letter-spacing: .14em; text-transform: uppercase; font-weight: 800; margin-bottom: 14px; }
+.tag-group { margin-bottom: 14px; }
+.tag-group-label { font-size: 9px; color: rgba(255,255,255,.3); letter-spacing: .1em; text-transform: uppercase; font-weight: 800; margin-bottom: 7px; }
+.tag-pills { display: flex; flex-wrap: wrap; gap: 5px; }
+.pill {
+  font-size: 10px; padding: 5px 12px; border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.1); cursor: pointer;
+  background: transparent; color: rgba(255,255,255,.45);
+  transition: all .15s; font-family: 'Montserrat', sans-serif; font-weight: 700;
+}
+.pill:hover { border-color: var(--purple); color: rgba(200,150,255,.9); }
+.pill.selected { background: rgba(155,61,232,.3); border-color: var(--purple); color: #fff; }
+
+.add-actions { margin-top: 22px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.save-btn {
+  padding: 13px 36px; border-radius: 12px; border: none;
+  background: linear-gradient(135deg, var(--purple), #5a1faa);
+  color: #fff; font-family: 'Montserrat', sans-serif;
+  font-size: 13px; font-weight: 800; letter-spacing: .08em; cursor: pointer;
+  transition: all .25s; display: flex; align-items: center; gap: 8px;
+}
+.save-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 28px rgba(155,61,232,.4); }
+.save-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.save-note {
+  font-size: 11px; color: rgba(100,230,130,.6); font-weight: 700;
+  background: rgba(100,230,130,.07); border: 1px solid rgba(100,230,130,.18);
+  padding: 6px 12px; border-radius: 8px; display: flex; align-items: center; gap: 6px;
+}
+.save-note::before { content: '🔥'; }
+
+/* ── FULLSCREEN ── */
+#fsBackdrop { position: fixed; inset: 0; background: rgba(5,1,15,.82); backdrop-filter: blur(8px); z-index: 1000; opacity: 0; pointer-events: none; transition: opacity .35s; }
+#fsBackdrop.show { opacity: 1; pointer-events: all; }
+#fsOverlay {
+  position: fixed; inset: 0; z-index: 1001;
+  display: flex; align-items: center; justify-content: center; gap: 20px;
+  opacity: 0; pointer-events: none; transition: opacity .35s;
+}
+#fsOverlay.show { opacity: 1; pointer-events: all; }
+.fs-img { max-width: min(500px, 52vw); max-height: 78vh; border-radius: 20px; box-shadow: 0 32px 80px rgba(0,0,0,.8); display: block; }
+.fs-panel {
+  width: 300px; background: rgba(255,255,255,.97);
+  border-radius: 20px; overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,.5);
+  display: flex; flex-direction: column; max-height: 70vh;
+}
+.fs-panel-head { padding: 14px 16px 12px; border-bottom: 1px solid rgba(0,0,0,.07); display: flex; align-items: center; justify-content: space-between; }
+.fs-panel-label { font-size: 9px; color: rgba(0,0,0,.35); letter-spacing: .18em; text-transform: uppercase; font-weight: 800; }
+.fs-close { width: 26px; height: 26px; border-radius: 50%; border: 1px solid rgba(0,0,0,.1); background: rgba(0,0,0,.04); cursor: pointer; font-size: 11px; color: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; transition: all .2s; }
+.fs-close:hover { background: rgba(0,0,0,.1); color: #000; }
+.fs-body { padding: 16px; overflow-y: auto; flex: 1; }
+.fs-img-name { font-size: 13px; font-weight: 800; color: #111; margin-bottom: 14px; }
+.fs-tag-block { padding: 8px 0; text-align: center; }
+.fs-tag-name { font-family: 'Crimson Text', serif; font-size: 21px; font-style: italic; color: #111; }
+.fs-tag-cat  { font-size: 8px; color: rgba(130,60,200,.65); letter-spacing: .16em; text-transform: uppercase; font-weight: 800; margin: 3px 0 6px; }
+.fs-tag-desc { font-size: 11px; color: rgba(0,0,0,.55); line-height: 1.6; }
+.fs-sep { height: 1px; background: rgba(0,0,0,.06); margin: 8px 0; }
+
+/* ── TOAST ── */
+#toastWrap { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+.toast {
+  padding: 12px 18px; border-radius: 14px;
+  background: rgba(22,6,44,.97); border: 1px solid rgba(155,61,232,.35);
+  color: #fff; font-size: 12px; font-weight: 700;
+  box-shadow: 0 12px 40px rgba(0,0,0,.6); backdrop-filter: blur(16px);
+  animation: toastIn .3s ease both; pointer-events: all;
+  display: flex; align-items: center; gap: 10px;
+}
+.toast.success { border-color: rgba(100,230,130,.35); }
+.toast.success .ti { color: #7ee8a2; }
+.toast.error { border-color: rgba(255,100,100,.35); }
+.toast.error .ti { color: #ff8080; }
+.toast.info .ti { color: var(--purple-light); }
+.toast.out { animation: toastOut .3s ease forwards; }
+@keyframes toastIn  { from { opacity:0; transform:translateX(40px) scale(.9) } to { opacity:1; transform:none } }
+@keyframes toastOut { to   { opacity:0; transform:translateX(40px) scale(.9) } }
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loadingScreen">
+  <div class="load-logo">LUMINA</div>
+  <div class="load-sub">Conectando con Firebase · Avance v2.0</div>
+  <div class="load-bar-wrap"><div class="load-bar"></div></div>
+</div>
+
+<!-- AUTH -->
+<div id="authScreen">
+  <div class="auth-wrap">
+    <div class="auth-logo">LUMINA</div>
+    <div class="auth-tagline">Biblioteca Visual · Proyecto Escolar</div>
+    <div class="auth-badge"><span>Avance 2 — Firebase Auth + Firestore activos</span></div>
+
+    <div class="auth-tabs">
+      <div class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Iniciar Sesión</div>
+      <div class="auth-tab" id="tab-register" onclick="switchAuthTab('register')">Registrarse</div>
+    </div>
+
+    <div class="auth-field" id="nameField" style="display:none">
+      <label>Nombre</label>
+      <input type="text" id="authName" placeholder="Tu nombre">
+    </div>
+    <div class="auth-field">
+      <label>Correo electrónico</label>
+      <input type="email" id="authEmail" placeholder="tu@correo.com">
+    </div>
+    <div class="auth-field">
+      <label>Contraseña</label>
+      <input type="password" id="authPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')handleAuth()">
+    </div>
+    <button class="auth-btn" id="authSubmitBtn" onclick="handleAuth()">ENTRAR →</button>
+    <div class="auth-error" id="authError"></div>
+
+    <div class="auth-divider">o</div>
+    <button class="auth-google-btn" onclick="loginWithGoogle()">
+      <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Continuar con Google
+    </button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+
+  <!-- NAV -->
+  <nav class="topnav">
+    <div class="nav-bar">
+      <div class="nav-logo">LUMINA</div>
+      <button class="nav-tab active" id="nt-home"    onclick="goView('home')">INICIO</button>
+      <button class="nav-tab"        id="nt-gallery" onclick="goView('gallery')">GALERÍA</button>
+      <button class="nav-tab"        id="nt-add"     onclick="goView('add')">AGREGAR</button>
+      <div class="nav-search">
+        <input type="text" id="searchInput" placeholder="Buscar imágenes, etiquetas…" oninput="doSearch(this.value)">
+        <button class="nav-search-btn" onclick="doSearch(document.getElementById('searchInput').value)">Buscar</button>
+      </div>
+      <div class="nav-right">
+        <div class="nav-avatar" id="navAv">?</div>
+        <button class="nav-logout" onclick="logout()">Salir</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- PROGRESS BANNER -->
+  <div class="progress-banner">
+    <div class="progress-dot"></div>
+    <span>Avance 2 — </span>
+    <span class="progress-tag firebase-tag">🔥 Firebase Auth</span>
+    <span class="progress-tag firebase-tag">🔥 Firestore activo</span>
+    <span class="progress-tag done">✓ Subida de imágenes</span>
+    <span class="progress-tag done">✓ Lectura desde BD</span>
+    <span class="progress-tag done">✓ Eliminar imágenes</span>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- HOME -->
+    <div class="view active" id="view-home">
+      <div class="home-hero">
+        <div class="hero-bg-blob"></div>
+        <div class="hero-content">
+          <div class="hero-badge">Avance 2 · Firebase integrado</div>
+          <div class="hero-title">LUMINA</div>
+          <div class="hero-desc">Biblioteca visual de referencia para diseñadores.<br>Tus imágenes ahora se guardan en la nube.</div>
+          <div class="hero-actions">
+            <button class="btn-primary" onclick="goView('gallery')">Ver galería →</button>
+            <button class="btn-outline" onclick="goView('add')">+ Subir imagen</button>
+          </div>
+          <div class="hero-stats">
+            <div><div class="stat-num" id="statImgs">—</div><div class="stat-label">En tu galería</div></div>
+            <div><div class="stat-num">4</div><div class="stat-label">Categorías</div></div>
+            <div><div class="stat-num">20+</div><div class="stat-label">Etiquetas</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="home-features">
+        <div class="feature-card">
+          <div class="fc-icon">🔥</div>
+          <div class="fc-title">Firebase Auth</div>
+          <div class="fc-desc">Registro e inicio de sesión reales con correo/contraseña y Google OAuth. Cada usuario tiene su galería privada en Firestore.</div>
+          <div class="fc-badge done">✓ Implementado</div>
+        </div>
+        <div class="feature-card">
+          <div class="fc-icon">🗄️</div>
+          <div class="fc-title">Firestore Database</div>
+          <div class="fc-desc">Las imágenes (como base64) y sus etiquetas se guardan en Firestore. Se leen en tiempo real al entrar a la galería.</div>
+          <div class="fc-badge done">✓ Implementado</div>
+        </div>
+        <div class="feature-card">
+          <div class="fc-icon">🖼️</div>
+          <div class="fc-title">Agregar y Eliminar</div>
+          <div class="fc-desc">Sube imágenes con etiquetas y se guardan directamente en tu colección. Puedes eliminarlas desde la galería.</div>
+          <div class="fc-badge done">✓ Implementado</div>
+        </div>
+        <div class="feature-card">
+          <div class="fc-icon">🏷️</div>
+          <div class="fc-title">Sistema de Etiquetas</div>
+          <div class="fc-desc">Categoriza tus imágenes por Paleta, Composición, Estilo y Técnica. Filtra en la galería por categoría.</div>
+          <div class="fc-badge done">✓ Implementado</div>
+        </div>
+        <div class="feature-card wip">
+          <div class="fc-icon">👥</div>
+          <div class="fc-title">Modo Compartido</div>
+          <div class="fc-desc">Galería pública para explorar imágenes de la comunidad con filtros avanzados.</div>
+          <div class="fc-badge pending">⋯ Próximamente</div>
+        </div>
+        <div class="feature-card wip">
+          <div class="fc-icon">👤</div>
+          <div class="fc-title">Perfil de Usuario</div>
+          <div class="fc-desc">Avatar, bio, estadísticas y colecciones personalizadas por usuario.</div>
+          <div class="fc-badge pending">⋯ Próximamente</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GALLERY -->
+    <div class="view" id="view-gallery">
+      <div class="gallery-header">
+        <div>
+          <div class="gallery-title">Mi Galería</div>
+          <div class="gallery-sub" id="galleryCount">Cargando…</div>
+        </div>
+        <div class="gallery-note">Imágenes guardadas en Firestore</div>
+      </div>
+      <div class="cat-pills" id="catPills">
+        <div class="cat-pill active" onclick="filterCat('all', this)">Todas</div>
+        <div class="cat-pill" onclick="filterCat('Paleta', this)">Paleta</div>
+        <div class="cat-pill" onclick="filterCat('Composición', this)">Composición</div>
+        <div class="cat-pill" onclick="filterCat('Estilo', this)">Estilo</div>
+        <div class="cat-pill" onclick="filterCat('Técnica', this)">Técnica</div>
+      </div>
+      <div class="pin-grid" id="pinGrid">
+        <div class="gallery-loading">
+          <div class="spinner"></div>
+          <p>Cargando imágenes desde Firestore…</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADD -->
+    <div class="view" id="view-add">
+      <div class="add-view">
+        <div class="add-title">Agregar Imagen</div>
+        <div class="add-sub">Selecciona una imagen, asígnale etiquetas y guárdala en Firebase</div>
+        <div class="add-grid">
+          <div>
+            <div class="upload-zone" id="uploadZone">
+              <span class="upload-icon">📁</span>
+              <div class="upload-label">Arrastra o haz clic para seleccionar</div>
+              <div class="upload-hint">JPG, PNG · Máx. 800KB</div>
+              <input type="file" accept="image/*" onchange="handleFile(this)" id="fileInput">
+            </div>
+            <div id="previewWrap">
+              <img id="previewImg" src="" alt="Vista previa">
+            </div>
+            <div class="img-name-field">
+              <label>Nombre de la imagen</label>
+              <input type="text" id="imgName" placeholder="Ej: Composición geométrica abstracta">
+            </div>
+          </div>
+          <div class="tags-panel">
+            <div class="tags-panel-title">Etiquetas de referencia</div>
+            <div id="tagsForm"></div>
+          </div>
+        </div>
+        <div class="add-actions">
+          <button class="save-btn" id="saveBtn" onclick="saveImg()">
+            <span>🔥</span> GUARDAR EN FIREBASE
+          </button>
+          <span class="save-note">Se guarda en tu colección personal en Firestore</span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- .content -->
+</div><!-- #app -->
+
+<!-- FULLSCREEN -->
+<div id="fsBackdrop" onclick="closeFS()"></div>
+<div id="fsOverlay">
+  <div id="fsImgWrap"></div>
+  <div class="fs-panel">
+    <div class="fs-panel-head">
+      <div class="fs-panel-label">Info de imagen</div>
+      <button class="fs-close" onclick="closeFS()">✕</button>
+    </div>
+    <div class="fs-body" id="fsBody"></div>
+  </div>
+</div>
+
+<!-- TOASTS -->
+<div id="toastWrap"></div>
+
+<script>
+/* ===========================
+   LUMINA — AVANCE v2.0
+   Firebase Auth + Firestore
+   =========================== */
+
+// ── FIREBASE CONFIG (proyecto real) ──
+const firebaseConfig = {
+  apiKey:            "AIzaSyCj9SDEHAMSRdEf9Gp_ZZvt-2fYH5nOPTY",
+  authDomain:        "visua-15c2a.firebaseapp.com",
+  projectId:         "visua-15c2a",
+  storageBucket:     "visua-15c2a.firebasestorage.app",
+  messagingSenderId: "498143985378",
+  appId:             "1:498143985378:web:1351eea1a00f10d366a8bb"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+
+// ── ESTADO ──
+let currentUser  = null;
+let myImages     = [];
+let selectedTags = {};
+let currentFile  = null;
+let filterActive = 'all';
+let searchQuery  = '';
+let currentView  = 'home';
+
+// ── CATEGORÍAS Y ETIQUETAS ──
+const CATS = {
+  'Paleta':       ['Monocromático','Análogo','Complementario','Saturado','Pastel','Neutros','Cálido','Frío'],
+  'Composición':  ['Regla de tercios','Asimetría','Geometría','Espacio Negativo','Simetría','Líneas guía'],
+  'Estilo':       ['Minimalismo','Editorial','Orgánico','Urbano','Abstracto','Cinematico','Vintage'],
+  'Técnica':      ['Alto Contraste','Textura','Silueta','Profundidad de Campo','Contraluz','Bokeh'],
+};
+
+const TAG_INFO = {
+  'Monocromático':        { cat:'Paleta',       desc:'Una sola familia de color en distintos valores de brillo y saturación.' },
+  'Análogo':              { cat:'Paleta',       desc:'Colores adyacentes en el círculo cromático, producen armonía visual.' },
+  'Complementario':       { cat:'Paleta',       desc:'Colores opuestos en el círculo cromático; generan máximo contraste.' },
+  'Saturado':             { cat:'Paleta',       desc:'Alta intensidad de color; transmite energía y vivacidad.' },
+  'Pastel':               { cat:'Paleta',       desc:'Tonos suaves y de baja saturación; evocan delicadeza.' },
+  'Neutros':              { cat:'Paleta',       desc:'Grises, blancos, negros y beiges; base sólida sin distracción.' },
+  'Cálido':               { cat:'Paleta',       desc:'Paleta de rojos, naranjas y amarillos; energía y vitalidad.' },
+  'Frío':                 { cat:'Paleta',       desc:'Paleta de azules y morados; calma o melancolía.' },
+  'Regla de tercios':     { cat:'Composición',  desc:'La imagen se divide en 9 partes; los elementos clave van en las intersecciones.' },
+  'Asimetría':            { cat:'Composición',  desc:'Balance visual sin simetría exacta; crea dinamismo.' },
+  'Geometría':            { cat:'Composición',  desc:'Uso de formas regulares como estructura compositiva.' },
+  'Espacio Negativo':     { cat:'Composición',  desc:'Zona vacía que da peso y respiro al elemento principal.' },
+  'Simetría':             { cat:'Composición',  desc:'Reflejo especular; evoca orden, estabilidad y elegancia.' },
+  'Líneas guía':          { cat:'Composición',  desc:'Líneas que llevan la vista hacia el sujeto principal.' },
+  'Minimalismo':          { cat:'Estilo',       desc:'Solo los elementos esenciales; menos es más.' },
+  'Editorial':            { cat:'Estilo',       desc:'Composición propia de revistas de arte; muy cuidada.' },
+  'Orgánico':             { cat:'Estilo',       desc:'Formas naturales e irregulares; sensación viva y cálida.' },
+  'Urbano':               { cat:'Estilo',       desc:'Estética de la ciudad; arquitectura, gráfica y vida cotidiana.' },
+  'Abstracto':            { cat:'Estilo',       desc:'Sin referencia figurativa directa; expresión pura de forma y color.' },
+  'Cinematico':           { cat:'Estilo',       desc:'Aspecto de película con ratio amplio y color grading específico.' },
+  'Vintage':              { cat:'Estilo',       desc:'Estética de épocas pasadas; grano y colores desteñidos.' },
+  'Alto Contraste':       { cat:'Técnica',      desc:'Diferencia extrema entre zonas claras y oscuras.' },
+  'Textura':              { cat:'Técnica',      desc:'Superficie visual que aporta profundidad y tactilidad.' },
+  'Silueta':              { cat:'Técnica',      desc:'Figura opaca contra fondo iluminado; forma como protagonista.' },
+  'Profundidad de Campo': { cat:'Técnica',      desc:'Zona nítida limitada; separa sujeto del fondo con desenfoque.' },
+  'Contraluz':            { cat:'Técnica',      desc:'Fuente de luz detrás del sujeto creando silueta o halo luminoso.' },
+  'Bokeh':                { cat:'Técnica',      desc:'Desenfoque artístico de fondo que destaca el sujeto principal.' },
+};
+
+// ── INIT: Auth state ──
+auth.onAuthStateChanged(user => {
+  document.getElementById('loadingScreen').classList.add('fade');
+  setTimeout(() => { document.getElementById('loadingScreen').style.display = 'none'; }, 600);
+
+  if (user) {
+    currentUser = user;
+    document.getElementById('authScreen').classList.remove('show');
+    document.getElementById('app').classList.add('show');
+    const initial = (user.displayName || user.email || '?').charAt(0).toUpperCase();
+    document.getElementById('navAv').textContent = initial;
+    buildTagsForm();
+    loadMyImages();
+    showToast('¡Bienvenido de vuelta! 👋', 'info');
+  } else {
+    currentUser = null;
+    document.getElementById('authScreen').classList.add('show');
+    document.getElementById('app').classList.remove('show');
+  }
+});
+
+// ── AUTH TABS ──
+function switchAuthTab(mode) {
+  document.getElementById('tab-login').classList.toggle('active', mode === 'login');
+  document.getElementById('tab-register').classList.toggle('active', mode === 'register');
+  document.getElementById('nameField').style.display = mode === 'register' ? 'block' : 'none';
+  document.getElementById('authSubmitBtn').textContent = mode === 'login' ? 'ENTRAR →' : 'CREAR CUENTA →';
+  document.getElementById('authError').textContent = '';
+}
+
+async function handleAuth() {
+  const email = document.getElementById('authEmail').value.trim();
+  const pass  = document.getElementById('authPass').value;
+  const name  = document.getElementById('authName').value.trim();
+  const errEl = document.getElementById('authError');
+  errEl.textContent = '';
+  if (!email || !pass) { errEl.textContent = 'Completa todos los campos.'; return; }
+  const isRegister = document.getElementById('tab-register').classList.contains('active');
+  try {
+    if (isRegister) {
+      if (!name) { errEl.textContent = 'Escribe tu nombre.'; return; }
+      const cred = await auth.createUserWithEmailAndPassword(email, pass);
+      await cred.user.updateProfile({ displayName: name });
+    } else {
+      await auth.signInWithEmailAndPassword(email, pass);
+    }
+  } catch(e) {
+    const msgs = {
+      'auth/email-already-in-use': 'Ese correo ya está registrado.',
+      'auth/invalid-email': 'Correo inválido.',
+      'auth/weak-password': 'La contraseña debe tener mínimo 6 caracteres.',
+      'auth/user-not-found': 'Usuario no encontrado.',
+      'auth/wrong-password': 'Contraseña incorrecta.',
+      'auth/invalid-credential': 'Correo o contraseña incorrectos.',
+    };
+    errEl.textContent = msgs[e.code] || 'Error: ' + e.message;
+  }
+}
+
+async function loginWithGoogle() {
+  const errEl = document.getElementById('authError');
+  errEl.textContent = '';
+  try {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    await auth.signInWithPopup(provider);
+  } catch(e) {
+    const msgs = {
+      'auth/popup-closed-by-user': 'Cerraste la ventana de Google.',
+      'auth/popup-blocked': 'El navegador bloqueó el popup. Permite popups para esta app.',
+    };
+    errEl.textContent = msgs[e.code] || 'Error con Google: ' + e.message;
+  }
+}
+
+async function logout() {
+  await auth.signOut();
+  myImages = [];
+}
+
+// ── VIEWS ──
+function goView(v) {
+  document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('view-' + v).classList.add('active');
+  const nt = document.getElementById('nt-' + v);
+  if (nt) nt.classList.add('active');
+  currentView = v;
+  document.getElementById('searchInput').value = '';
+  searchQuery = '';
+  if (v === 'gallery') renderGallery();
+  if (v === 'add')     buildTagsForm();
+}
+
+// ── LOAD FROM FIRESTORE ──
+async function loadMyImages() {
+  if (!currentUser) return;
+  const grid = document.getElementById('pinGrid');
+  grid.innerHTML = `<div class="gallery-loading"><div class="spinner"></div><p>Leyendo desde Firestore…</p></div>`;
+  try {
+    const snap = await db.collection('images')
+      .where('uid', '==', currentUser.uid)
+      .orderBy('createdAt', 'desc')
+      .get();
+    myImages = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+    document.getElementById('statImgs').textContent = myImages.length;
+    if (currentView === 'gallery') renderGallery();
+  } catch(e) {
+    console.error('loadMyImages:', e);
+    grid.innerHTML = `<div class="empty-state"><span class="es-icon">⚠️</span><h3>Error al cargar</h3><p>${e.message}</p></div>`;
+  }
+}
+
+// ── RENDER GALLERY ──
+function renderGallery() {
+  const grid = document.getElementById('pinGrid');
+  grid.innerHTML = '';
+  let imgs = [...myImages];
+
+  // Filtro por categoría
+  if (filterActive !== 'all') {
+    imgs = imgs.filter(img => img.tags && img.tags[filterActive] && img.tags[filterActive].length > 0);
+  }
+
+  // Búsqueda
+  if (searchQuery) {
+    const sq = searchQuery.toLowerCase();
+    imgs = imgs.filter(img => {
+      const n  = (img.name || '').toLowerCase();
+      const ts = Object.values(img.tags || {}).flat().join(' ').toLowerCase();
+      return n.includes(sq) || ts.includes(sq);
+    });
+  }
+
+  const count = imgs.length;
+  document.getElementById('galleryCount').textContent = count + ' imagen' + (count !== 1 ? 'es' : '') + ' guardada' + (count !== 1 ? 's' : '');
+
+  if (!count) {
+    const msg = myImages.length === 0
+      ? 'Tu galería está vacía. ¡Agrega tu primera imagen!'
+      : 'Sin resultados para ese filtro.';
+    grid.innerHTML = `<div class="empty-state"><span class="es-icon">🖼️</span><h3>${myImages.length === 0 ? 'Galería vacía' : 'Sin resultados'}</h3><p>${msg}</p></div>`;
+    return;
+  }
+
+  imgs.forEach(img => {
+    const card = document.createElement('div');
+    card.className = 'pin-card';
+
+    const imgEl = document.createElement('img');
+    imgEl.src = img.src;
+    imgEl.loading = 'lazy';
+    imgEl.alt = img.name || '';
+    card.appendChild(imgEl);
+
+    const ov = document.createElement('div');
+    ov.className = 'pin-overlay';
+    const allTags = Object.values(img.tags || {}).flat().slice(0, 3);
+    ov.innerHTML = `<div class="pin-name">${img.name || 'Sin nombre'}</div><div class="pin-tags">${allTags.map(t => `<span class="pin-tag">${t}</span>`).join('')}</div>`;
+    card.appendChild(ov);
+
+    // Botón eliminar
+    const delBtn = document.createElement('button');
+    delBtn.className = 'pin-delete';
+    delBtn.title = 'Eliminar imagen';
+    delBtn.textContent = '✕';
+    delBtn.onclick = (e) => { e.stopPropagation(); deleteImg(img.docId, card); };
+    card.appendChild(delBtn);
+
+    card.onclick = () => openFS(img);
+    grid.appendChild(card);
+  });
+}
+
+// ── FILTER ──
+function filterCat(cat, el) {
+  document.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  filterActive = cat;
+  renderGallery();
+}
+
+function doSearch(val) {
+  searchQuery = (val || '').trim();
+  if (currentView === 'gallery') renderGallery();
+}
+
+// ── HANDLE FILE ──
+function handleFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 800000) {
+    showToast('Imagen muy grande. Máximo 800KB.', 'error');
+    return;
+  }
+  currentFile = file;
+  // Auto-completar nombre con el nombre del archivo (sin extensión)
+  const nameInput = document.getElementById('imgName');
+  if (!nameInput.value) {
+    nameInput.value = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+  }
+  const r = new FileReader();
+  r.onload = ev => {
+    document.getElementById('previewImg').src = ev.target.result;
+    document.getElementById('previewWrap').style.display = 'block';
+  };
+  r.readAsDataURL(file);
+}
+
+// ── SAVE IMAGE TO FIRESTORE ──
+async function saveImg() {
+  if (!currentFile) { showToast('Selecciona una imagen primero.', 'error'); return; }
+  if (!currentUser)  { showToast('Debes iniciar sesión.', 'error'); return; }
+
+  const name = document.getElementById('imgName').value.trim() || currentFile.name;
+
+  const allTags = {};
+  let hasTag = false;
+  Object.entries(selectedTags).forEach(([cat, set]) => {
+    if (set.size > 0) { allTags[cat] = [...set]; hasTag = true; }
+  });
+  if (!hasTag) { showToast('Selecciona al menos una etiqueta.', 'error'); return; }
+
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span>⏳</span> GUARDANDO…';
+
+  const r = new FileReader();
+  r.onload = async ev => {
+    try {
+      const docData = {
+        uid:       currentUser.uid,
+        name:      name,
+        src:       ev.target.result,   // base64 en Firestore
+        tags:      allTags,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      };
+
+      const docRef = await db.collection('images').add(docData);
+
+      // Agregar localmente
+      myImages.unshift({ docId: docRef.id, ...docData, createdAt: { toMillis: () => Date.now() } });
+      document.getElementById('statImgs').textContent = myImages.length;
+
+      // Resetear formulario
+      currentFile = null;
+      document.getElementById('previewWrap').style.display = 'none';
+      document.getElementById('previewImg').src = '';
+      document.getElementById('fileInput').value = '';
+      document.getElementById('imgName').value = '';
+      buildTagsForm();
+
+      showToast('¡Imagen guardada en Firebase! 🔥', 'success');
+      goView('gallery');
+
+    } catch(e) {
+      console.error('saveImg error:', e);
+      showToast('Error al guardar: ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<span>🔥</span> GUARDAR EN FIREBASE';
+    }
+  };
+  r.readAsDataURL(currentFile);
+}
+
+// ── DELETE FROM FIRESTORE ──
+async function deleteImg(docId, cardEl) {
+  if (!confirm('¿Eliminar esta imagen de Firebase?')) return;
+  try {
+    await db.collection('images').doc(docId).delete();
+    myImages = myImages.filter(i => i.docId !== docId);
+    document.getElementById('statImgs').textContent = myImages.length;
+    // Animación de salida
+    cardEl.style.transition = 'opacity .3s, transform .3s';
+    cardEl.style.opacity = '0';
+    cardEl.style.transform = 'scale(.85)';
+    setTimeout(() => cardEl.remove(), 320);
+    showToast('Imagen eliminada de Firestore.', 'info');
+  } catch(e) {
+    showToast('Error al eliminar: ' + e.message, 'error');
+  }
+}
+
+// ── BUILD TAGS FORM ──
+function buildTagsForm() {
+  const form = document.getElementById('tagsForm');
+  form.innerHTML = '';
+  selectedTags = {};
+  Object.entries(CATS).forEach(([cat, vals]) => {
+    selectedTags[cat] = new Set();
+    const group = document.createElement('div');
+    group.className = 'tag-group';
+    group.innerHTML = `<div class="tag-group-label">${cat}</div><div class="tag-pills" id="pills-${cat}"></div>`;
+    form.appendChild(group);
+    const pillWrap = group.querySelector('.tag-pills');
+    vals.forEach(v => {
+      const p = document.createElement('div');
+      p.className = 'pill';
+      p.textContent = v;
+      p.onclick = () => {
+        if (selectedTags[cat].has(v)) { selectedTags[cat].delete(v); p.classList.remove('selected'); }
+        else { selectedTags[cat].add(v); p.classList.add('selected'); }
+      };
+      pillWrap.appendChild(p);
+    });
+  });
+}
+
+// ── FULLSCREEN ──
+function openFS(img) {
+  const wrap = document.getElementById('fsImgWrap');
+  const imgEl = document.createElement('img');
+  imgEl.className = 'fs-img';
+  imgEl.src = img.src;
+  imgEl.alt = img.name || '';
+  wrap.innerHTML = '';
+  wrap.appendChild(imgEl);
+
+  const body = document.getElementById('fsBody');
+  const allTags = Object.values(img.tags || {}).flat();
+  body.innerHTML = `<div class="fs-img-name">${img.name || 'Sin nombre'}</div>` +
+    allTags.map((tag, i) => {
+      const info = TAG_INFO[tag] || {};
+      return `<div class="fs-tag-block">
+        <div class="fs-tag-name">${tag}</div>
+        <div class="fs-tag-cat">${info.cat || ''}</div>
+        <div class="fs-tag-desc">${info.desc || 'Sin descripción.'}</div>
+      </div>${i < allTags.length - 1 ? '<div class="fs-sep"></div>' : ''}`;
+    }).join('');
+
+  document.getElementById('fsBackdrop').classList.add('show');
+  document.getElementById('fsOverlay').classList.add('show');
+}
+
+function closeFS() {
+  document.getElementById('fsBackdrop').classList.remove('show');
+  document.getElementById('fsOverlay').classList.remove('show');
+}
+
+// ── TOAST ──
+function showToast(msg, type = 'info') {
+  const icons = { info:'💜', success:'✅', error:'❌', warning:'⚠️' };
+  const wrap = document.getElementById('toastWrap');
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.innerHTML = `<span class="ti">${icons[type] || 'ℹ'}</span><span>${msg}</span>`;
+  wrap.appendChild(t);
+  setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 300); }, 3500);
+}
+
+// ── WINDOW LOAD ──
+window.addEventListener('load', () => {
+  // La pantalla de carga desaparecerá cuando Firebase responda (auth.onAuthStateChanged)
+  // Si Firebase tarda demasiado, forzamos cierre tras 4s
+  setTimeout(() => {
+    const ls = document.getElementById('loadingScreen');
+    if (ls && !ls.classList.contains('fade')) {
+      ls.classList.add('fade');
+      setTimeout(() => ls.style.display = 'none', 600);
+      document.getElementById('authScreen').classList.add('show');
+    }
+  }, 4000);
+});
+</script>
+</body>
+</html>
